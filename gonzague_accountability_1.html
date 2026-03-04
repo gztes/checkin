@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GONZAGUE — DAILY ACCOUNTABILITY</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --border: #1e1e1e;
+    --red: #ff2d2d;
+    --green: #00e676;
+    --yellow: #ffd600;
+    --white: #f0f0f0;
+    --grey: #444;
+    --light-grey: #888;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--white);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Noise texture overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 999;
+    opacity: 0.4;
+  }
+
+  .container {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 48px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .header-left h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 52px;
+    letter-spacing: 2px;
+    line-height: 1;
+    color: var(--white);
+  }
+
+  .header-left .date {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--light-grey);
+    margin-top: 6px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .score-display {
+    text-align: right;
+  }
+
+  .score-number {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 64px;
+    line-height: 1;
+    color: var(--white);
+    transition: color 0.3s;
+  }
+
+  .score-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--light-grey);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+  }
+
+  /* Streak bar */
+  .streak-bar {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 40px;
+    align-items: center;
+  }
+
+  .streak-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--light-grey);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-right: 8px;
+    white-space: nowrap;
+  }
+
+  .streak-dot {
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    background: var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-family: 'DM Mono', monospace;
+    color: var(--grey);
+    transition: all 0.3s;
+    flex-shrink: 0;
+  }
+
+  .streak-dot.done { background: var(--green); color: #000; }
+  .streak-dot.failed { background: var(--red); color: #fff; }
+  .streak-dot.today { border: 1px solid var(--white); color: var(--white); }
+
+  /* Section */
+  .section {
+    margin-bottom: 32px;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 13px;
+    letter-spacing: 3px;
+    color: var(--light-grey);
+    text-transform: uppercase;
+  }
+
+  .section-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* Task item */
+  .task {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+  }
+
+  .task:hover { border-color: #333; background: #161616; }
+
+  .task.checked {
+    border-color: var(--green);
+    background: rgba(0, 230, 118, 0.04);
+  }
+
+  .task.checked .task-name { color: var(--light-grey); text-decoration: line-through; }
+
+  .task-check {
+    width: 20px;
+    height: 20px;
+    border: 1.5px solid var(--grey);
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.15s;
+    font-size: 12px;
+  }
+
+  .task.checked .task-check {
+    background: var(--green);
+    border-color: var(--green);
+    color: #000;
+  }
+
+  .task-name {
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--white);
+    flex: 1;
+    transition: color 0.2s;
+  }
+
+  .task-emoji {
+    font-size: 16px;
+    width: 24px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .task-weight {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--grey);
+    flex-shrink: 0;
+  }
+
+  /* Consequence box */
+  .consequence-box {
+    margin-top: 40px;
+    padding: 24px;
+    border: 1px solid var(--red);
+    border-radius: 6px;
+    background: rgba(255, 45, 45, 0.04);
+    display: none;
+  }
+
+  .consequence-box.visible { display: block; }
+
+  .consequence-box.green {
+    border-color: var(--green);
+    background: rgba(0, 230, 118, 0.04);
+  }
+
+  .consequence-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+  }
+
+  .consequence-box.green .consequence-title { color: var(--green); }
+  .consequence-box:not(.green) .consequence-title { color: var(--red); }
+
+  .consequence-text {
+    font-size: 13px;
+    line-height: 1.7;
+    color: #ccc;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .consequence-text strong {
+    color: var(--red);
+    font-weight: 500;
+  }
+
+  .consequence-box.green .consequence-text strong { color: var(--green); }
+
+  /* Submit button */
+  .submit-btn {
+    width: 100%;
+    padding: 18px;
+    background: var(--white);
+    color: #000;
+    border: none;
+    border-radius: 6px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 3px;
+    cursor: pointer;
+    margin-top: 32px;
+    transition: all 0.15s;
+  }
+
+  .submit-btn:hover { background: #ddd; transform: translateY(-1px); }
+  .submit-btn:active { transform: translateY(0); }
+
+  /* Reset link */
+  .reset-link {
+    text-align: center;
+    margin-top: 16px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--grey);
+    cursor: pointer;
+    text-decoration: underline;
+    letter-spacing: 1px;
+  }
+
+  .reset-link:hover { color: var(--light-grey); }
+
+  /* Progress ring */
+  .progress-ring {
+    position: relative;
+    width: 64px;
+    height: 64px;
+  }
+
+  /* Score color states */
+  .score-red { color: var(--red) !important; }
+  .score-yellow { color: var(--yellow) !important; }
+  .score-green { color: var(--green) !important; }
+
+  /* Animation */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .consequence-box.visible {
+    animation: fadeIn 0.3s ease forwards;
+  }
+
+  .week-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 40px;
+  }
+
+  .stat-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px;
+    text-align: center;
+  }
+
+  .stat-number {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 32px;
+    line-height: 1;
+    color: var(--white);
+  }
+
+  .stat-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--light-grey);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 4px;
+  }
+
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 9px;
+    font-family: 'DM Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+
+  .tag-zland { background: rgba(255,45,45,0.15); color: #ff6b6b; }
+  .tag-body { background: rgba(0,230,118,0.12); color: #00e676; }
+  .tag-mind { background: rgba(255,214,0,0.12); color: #ffd600; }
+  .tag-soul { background: rgba(168,85,247,0.15); color: #c084fc; }
+
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div class="header-left">
+      <h1>DAILY CHECK-IN</h1>
+      <div class="date" id="dateDisplay"></div>
+    </div>
+    <div class="score-display">
+      <div class="score-number" id="scoreDisplay">0</div>
+      <div class="score-label">/ 10 pts</div>
+    </div>
+  </div>
+
+  <!-- Streak -->
+  <div class="streak-bar">
+    <div class="streak-label">7-day streak</div>
+    <div id="streakDots"></div>
+  </div>
+
+  <!-- Week stats -->
+  <div class="week-stats">
+    <div class="stat-box">
+      <div class="stat-number" id="statRun">0</div>
+      <div class="stat-label">Runs this week</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-number" id="statTrain">0</div>
+      <div class="stat-label">Training sessions</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-number" id="statZland">0</div>
+      <div class="stat-label">Zland tasks done</div>
+    </div>
+  </div>
+
+  <!-- NON-NEGOTIABLES -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">Non-Negotiables</div>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="task" data-id="run" data-points="2" data-cat="run" onclick="toggle(this)">
+      <div class="task-emoji">🏃</div>
+      <div class="task-check"></div>
+      <div class="task-name">Morning run done (20 mins)</div>
+      <div class="task-weight">2pts</div>
+    </div>
+
+    <div class="task" data-id="sleep" data-points="2" onclick="toggle(this)">
+      <div class="task-emoji">😴</div>
+      <div class="task-check"></div>
+      <div class="task-name">Phone away by 11pm</div>
+      <div class="task-weight">2pts</div>
+    </div>
+
+    <div class="task" data-id="priorities" data-points="1" onclick="toggle(this)">
+      <div class="task-emoji">🎯</div>
+      <div class="task-check"></div>
+      <div class="task-name">Wrote 3 priorities this morning</div>
+      <div class="task-weight">1pt</div>
+    </div>
+  </div>
+
+  <!-- ZLAND -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">Zland <span class="tag tag-zland">Bucket 1</span></div>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="task" data-id="zland" data-points="3" data-cat="zland" onclick="toggle(this)">
+      <div class="task-emoji">🚀</div>
+      <div class="task-check"></div>
+      <div class="task-name">Moved Zland forward (1 concrete action)</div>
+      <div class="task-weight">3pts</div>
+    </div>
+  </div>
+
+  <!-- BODY -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">Body <span class="tag tag-body">Train days only</span></div>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="task" data-id="train" data-points="1" data-cat="train" onclick="toggle(this)">
+      <div class="task-emoji">💪</div>
+      <div class="task-check"></div>
+      <div class="task-name">Training session completed</div>
+      <div class="task-weight">1pt</div>
+    </div>
+
+    <div class="task" data-id="diet" data-points="1" onclick="toggle(this)">
+      <div class="task-emoji">🥗</div>
+      <div class="task-check"></div>
+      <div class="task-name">Gluten-free & lactose-free all day</div>
+      <div class="task-weight">1pt</div>
+    </div>
+  </div>
+
+  <!-- MIND & SOUL -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">Mind & Soul <span class="tag tag-soul">Bucket 2</span></div>
+      <div class="section-line"></div>
+    </div>
+
+    <div class="task" data-id="revision" data-points="0" onclick="toggle(this)">
+      <div class="task-emoji">📚</div>
+      <div class="task-check"></div>
+      <div class="task-name">Revision slot done (1 hour)</div>
+      <div class="task-weight">bonus</div>
+    </div>
+
+    <div class="task" data-id="creative" data-points="0" onclick="toggle(this)">
+      <div class="task-emoji">🎧</div>
+      <div class="task-check"></div>
+      <div class="task-name">Creative session (DJ / music / content)</div>
+      <div class="task-weight">bonus</div>
+    </div>
+
+    <div class="task" data-id="grace" data-points="0" onclick="toggle(this)">
+      <div class="task-emoji">❤️</div>
+      <div class="task-check"></div>
+      <div class="task-name">Quality time / reached out to Grace</div>
+      <div class="task-weight">bonus</div>
+    </div>
+  </div>
+
+  <button class="submit-btn" onclick="submitDay()">LOCK IN TODAY'S CHECK-IN</button>
+
+  <!-- Consequence box -->
+  <div class="consequence-box" id="consequenceBox">
+    <div class="consequence-title" id="consequenceTitle"></div>
+    <div class="consequence-text" id="consequenceText"></div>
+  </div>
+
+  <div class="reset-link" onclick="resetDay()">reset today</div>
+
+</div>
+
+<script>
+  // ---- STATE ----
+  const STORAGE_KEY = 'gonzague_checkin';
+  const HISTORY_KEY = 'gonzague_history';
+
+  function getState() {
+    const today = getTodayKey();
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return { date: today, checked: {}, submitted: false };
+    const state = JSON.parse(raw);
+    if (state.date !== today) return { date: today, checked: {}, submitted: false };
+    return state;
+  }
+
+  function saveState(state) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+
+  function getHistory() {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    return raw ? JSON.parse(raw) : {};
+  }
+
+  function saveHistory(history) {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  }
+
+  function getTodayKey() {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  // ---- INIT ----
+  function init() {
+    const now = new Date();
+    document.getElementById('dateDisplay').textContent =
+      now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase();
+
+    const state = getState();
+
+    // Restore checkboxes
+    Object.keys(state.checked).forEach(id => {
+      if (state.checked[id]) {
+        const el = document.querySelector(`[data-id="${id}"]`);
+        if (el) el.classList.add('checked');
+        const check = el?.querySelector('.task-check');
+        if (check) check.textContent = '✓';
+      }
+    });
+
+    updateScore();
+    renderStreak();
+    renderWeekStats();
+
+    if (state.submitted) {
+      showConsequence(state.score);
+      document.querySelector('.submit-btn').disabled = true;
+      document.querySelector('.submit-btn').style.opacity = '0.4';
+      document.querySelector('.submit-btn').textContent = 'CHECKED IN ✓';
+    }
+  }
+
+  // ---- TOGGLE ----
+  function toggle(el) {
+    const state = getState();
+    if (state.submitted) return;
+
+    const id = el.dataset.id;
+    const isChecked = el.classList.contains('checked');
+
+    if (isChecked) {
+      el.classList.remove('checked');
+      el.querySelector('.task-check').textContent = '';
+      state.checked[id] = false;
+    } else {
+      el.classList.add('checked');
+      el.querySelector('.task-check').textContent = '✓';
+      state.checked[id] = true;
+    }
+
+    saveState(state);
+    updateScore();
+  }
+
+  // ---- SCORE ----
+  function calcScore() {
+    let score = 0;
+    document.querySelectorAll('.task.checked').forEach(el => {
+      score += parseInt(el.dataset.points || 0);
+    });
+    return Math.min(score, 10);
+  }
+
+  function updateScore() {
+    const score = calcScore();
+    const el = document.getElementById('scoreDisplay');
+    el.textContent = score;
+    el.className = 'score-number';
+    if (score <= 3) el.classList.add('score-red');
+    else if (score <= 6) el.classList.add('score-yellow');
+    else el.classList.add('score-green');
+  }
+
+  // ---- SUBMIT ----
+  function submitDay() {
+    const score = calcScore();
+    const state = getState();
+    state.submitted = true;
+    state.score = score;
+
+    // Save to history
+    const history = getHistory();
+    const checked = state.checked;
+    history[getTodayKey()] = {
+      score,
+      run: !!checked.run,
+      train: !!checked.train,
+      zland: !!checked.zland
+    };
+    saveHistory(history);
+    saveState(state);
+
+    showConsequence(score);
+    renderWeekStats();
+    renderStreak();
+
+    document.querySelector('.submit-btn').disabled = true;
+    document.querySelector('.submit-btn').style.opacity = '0.4';
+    document.querySelector('.submit-btn').textContent = 'CHECKED IN ✓';
+  }
+
+  // ---- CONSEQUENCE ENGINE ----
+  const consequences = [
+    { min: 0, max: 3, title: '🔴 UNACCEPTABLE', text: `You scored <strong>${'X'}/10</strong>. That's not a bad day — that's a choice.\n\nYour consequence this week:\n→ <strong>Cold shower every morning for 3 days, no exceptions</strong>\n→ Message Tommy right now and tell him you had a weak day\n→ No social media tomorrow until Zland task is done\n\nYou came here to build something real. Act like it.` },
+    { min: 4, max: 5, title: '🟡 BELOW PAR', text: `You scored <strong>${'X'}/10</strong>. You showed up but didn't finish.\n\nYour consequence:\n→ <strong>Wake up 30 minutes earlier tomorrow</strong>\n→ The thing you skipped today becomes priority #1 tomorrow\n→ No creative/entertainment time until Zland task done\n\nMediocre days compound into a mediocre life. Close the gap.` },
+    { min: 6, max: 7, title: '🟠 DECENT. NOT ENOUGH.', text: `You scored <strong>${'X'}/10</strong>. Solid but you left points on the table.\n\nChallenge for tomorrow:\n→ <strong>Hit 8+ or the cold shower rule kicks in</strong>\n→ Identify the 1 thing you skipped — do it first tomorrow\n\nYou're capable of more. You know it.` },
+    { min: 8, max: 9, title: '🟢 STRONG DAY', text: `You scored <strong>${'X'}/10</strong>. That's what momentum looks like.\n\nKeep the streak alive tomorrow. One thing:\n→ <strong>Don't let a good day make you soft on the next one</strong>\n\nZland is watching. The deposit clock is ticking.` },
+    { min: 10, max: 10, title: '🔥 PERFECT DAY', text: `<strong>10/10</strong>. You did everything.\n\nThis is who you are when you're locked in. Screenshot this. Remember this feeling.\n\n→ <strong>You earned your evening — fully</strong>\n→ Tell Grace about your day\n→ Tomorrow: do it again\n\nThis is how the EDHEC decision gets made for you.` }
+  ];
+
+  function showConsequence(score) {
+    const box = document.getElementById('consequenceBox');
+    const title = document.getElementById('consequenceTitle');
+    const text = document.getElementById('consequenceText');
+
+    const c = consequences.find(c => score >= c.min && score <= c.max);
+    if (!c) return;
+
+    title.textContent = c.title;
+    text.innerHTML = c.text.replace('X', score).replace(/\n/g, '<br>');
+    box.className = 'consequence-box visible' + (score >= 8 ? ' green' : '');
+  }
+
+  // ---- STREAK ----
+  function renderStreak() {
+    const history = getHistory();
+    const today = getTodayKey();
+    const dots = document.getElementById('streakDots');
+    dots.innerHTML = '';
+    dots.style.display = 'flex';
+    dots.style.gap = '6px';
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      const dayName = d.toLocaleDateString('en-GB', { weekday: 'short' }).slice(0,2).toUpperCase();
+      const dot = document.createElement('div');
+      dot.className = 'streak-dot';
+      dot.textContent = dayName;
+
+      if (key === today) {
+        dot.classList.add('today');
+        const state = getState();
+        if (state.submitted) {
+          dot.classList.remove('today');
+          dot.classList.add(state.score >= 5 ? 'done' : 'failed');
+          dot.textContent = state.score >= 5 ? '✓' : '✗';
+        }
+      } else if (history[key]) {
+        dot.classList.add(history[key].score >= 5 ? 'done' : 'failed');
+        dot.textContent = history[key].score >= 5 ? '✓' : '✗';
+      }
+
+      dots.appendChild(dot);
+    }
+  }
+
+  // ---- WEEK STATS ----
+  function renderWeekStats() {
+    const history = getHistory();
+    let runs = 0, trains = 0, zlands = 0;
+
+    for (let i = 0; i < 7; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      if (history[key]) {
+        if (history[key].run) runs++;
+        if (history[key].train) trains++;
+        if (history[key].zland) zlands++;
+      }
+    }
+
+    // Also count today if submitted
+    const state = getState();
+    if (state.submitted) {
+      if (state.checked.run) runs = Math.min(runs + 1, 7);
+      if (state.checked.train) trains = Math.min(trains + 1, 7);
+      if (state.checked.zland) zlands = Math.min(zlands + 1, 7);
+    }
+
+    document.getElementById('statRun').textContent = runs;
+    document.getElementById('statTrain').textContent = trains;
+    document.getElementById('statZland').textContent = zlands;
+  }
+
+  // ---- RESET ----
+  function resetDay() {
+    if (!confirm('Reset today\'s check-in?')) return;
+    localStorage.removeItem(STORAGE_KEY);
+    document.querySelectorAll('.task').forEach(t => {
+      t.classList.remove('checked');
+      t.querySelector('.task-check').textContent = '';
+    });
+    document.getElementById('consequenceBox').className = 'consequence-box';
+    const btn = document.querySelector('.submit-btn');
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.textContent = 'LOCK IN TODAY\'S CHECK-IN';
+    updateScore();
+  }
+
+  init();
+</script>
+</body>
+</html>
